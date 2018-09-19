@@ -37,57 +37,61 @@ class jv extends CI_Controller
     public function input_jv()
     {
         $this->db->trans_begin();
-
-        $data['no_voucher'] = $_POST['no_voucher'];
-        $data['date'] = $_POST['date'];
-        $data['bank_id'] = $_POST['bank_id'];
-        $data['description'] = $_POST['description'];
-        $data['curr_id'] = $_POST['curr_id'];
-        $data['total'] = $_POST['total'];
-        $data['kurs'] = $_POST['kurs'];
-        $data['receive_from'] = $_POST['receive_from'];
-        $data['no_cek'] = $_POST['no_cek'];
-        $data['gl_date'] = $_POST['gl_date'];
-        $data['status'] = $_POST['status'];
-        $data['audit_user'] = $this->session->userdata('username');
-        $data['audit_date'] = date("Y-m-d H:i:sa");
-        $data['is_cashflow'] = $_POST['cashflow'];
-        $this->db->insert('jv_header', $data);
+        $validate = $this->M_jv->get_header($_POST['no_voucher']);
+        if (count($validate) > 0) {
+            $this->session->set_flashdata('error', 'Failed, try again!');
+            redirect('jv/jv/view_jv');
+        } else {
+            $data['no_voucher'] = $_POST['no_voucher'];
+            $data['date'] = $_POST['date'];
+            $data['bank_id'] = $_POST['bank_id'];
+            $data['description'] = $_POST['description'];
+            $data['curr_id'] = $_POST['curr_id'];
+            $data['total'] = $_POST['total'];
+            $data['kurs'] = $_POST['kurs'];
+            $data['receive_from'] = $_POST['receive_from'];
+            $data['no_cek'] = $_POST['no_cek'];
+            $data['gl_date'] = $_POST['gl_date'];
+            $data['status'] = $_POST['status'];
+            $data['audit_user'] = $this->session->userdata('username');
+            $data['audit_date'] = date("Y-m-d H:i:sa");
+            $data['is_cashflow'] = $_POST['cashflow'];
+            $this->db->insert('jv_header', $data);
 
 //        INSERT TAG
-        $data_tag = array();
-        $tag_id = $this->input->post('tag');
-        for($i = 0; $i < count($tag_id); $i++){
-            $data_tag[$i] = array(
-                'no_voucher' =>$data['no_voucher'],
-                'tag_id'=> $tag_id[$i],
-            );
-        }
-        $this->db->insert_batch('jv_tag', $data_tag);
+            $data_tag = array();
+            $tag_id = $this->input->post('tag');
+            if(isset($tag_id) ) {
+                for ($i = 0; $i < count($tag_id); $i++) {
+                    $data_tag[$i] = array(
+                        'no_voucher' => $data['no_voucher'],
+                        'tag_id' => $tag_id[$i],
+                    );
+                }
+                $this->db->insert_batch('jv_tag', $data_tag);
+            }
 //        END OF INSERT TAG
 
-        $no_vouc = $this->input->post('no_vouc');
-        $coa_id = $this->input->post('coa_id');
-        $desc = $this->input->post('desc');
-        $debit = $this->input->post('debit');
-        $credit = $this->input->post('credit');
+            $no_vouc = $this->input->post('no_vouc');
+            $coa_id = $this->input->post('coa_id');
+            $desc = $this->input->post('desc');
+            $debit = $this->input->post('debit');
+            $credit = $this->input->post('credit');
 
-        $datax = array();
-        for ($i = 0; $i < count($coa_id); $i++) {
-            $datax[$i] = array(
-                'coa_id' => $coa_id[$i],
-                'description' => $desc[$i],
-                'no_voucher' => $no_vouc[$i],
-                'debit' => $debit[$i],
-                'credit' => $credit[$i],
+            $datax = array();
+            for ($i = 0; $i < count($coa_id); $i++) {
+                $datax[$i] = array(
+                    'coa_id' => $coa_id[$i],
+                    'description' => $desc[$i],
+                    'no_voucher' => $no_vouc[$i],
+                    'debit' => $debit[$i],
+                    'credit' => $credit[$i],
 
-            );
+                );
+            }
+            $this->db->insert_batch('jv_detail', $datax);
+
         }
-        //print_r($datax);
-        //exit;
-        $this->db->insert_batch('jv_detail', $datax);
-
-
         if ($this->db->trans_status() === FALSE)
         {
             $this->db->trans_rollback();

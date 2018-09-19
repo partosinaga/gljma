@@ -50,61 +50,66 @@ class ar extends CI_Controller
         $data['page'] = 'ar/ar_list';
         //get list AR
         $data['arList'] = $this->M_ar->get_ar();
-
         $this->load->view('template/template', $data);
     }
 
     public function input()
     {
         $this->db->trans_begin();
-
-        $data['no_voucher'] = $_POST['no_voucher'];
-        $data['date'] = $_POST['date'];
-        $data['bank_id'] = $_POST['bank_id'];
-        $data['description'] = $_POST['description'];
-        $data['curr_id'] = $_POST['curr_id'];
-        $data['total'] = $_POST['total'];
-        $data['kurs'] = $_POST['kurs'];
-        $data['receive_from'] = $_POST['receive_from'];
-        $data['no_cek'] = $_POST['no_cek'];
-        $data['gl_date'] = $_POST['gl_date'];
-        $data['status'] = $_POST['status'];
-        $data['audit_user'] = $this->session->userdata('username');
-        $data['audit_date'] = date("Y-m-d H:i:sa");
-        $this->db->insert('ar_header', $data);
+        $validate = $this->M_ar->get_header($_POST['no_voucher']);
+        if (count($validate) > 0) {
+            $this->session->set_flashdata('error', 'Failed, try again!');
+            redirect('ar/ar/view_ar');
+        } else {
+            $data['no_voucher'] = $_POST['no_voucher'];
+            $data['date'] = $_POST['date'];
+            $data['bank_id'] = $_POST['bank_id'];
+            $data['description'] = $_POST['description'];
+            $data['curr_id'] = $_POST['curr_id'];
+            $data['total'] = $_POST['total'];
+            $data['kurs'] = $_POST['kurs'];
+            $data['receive_from'] = $_POST['receive_from'];
+            $data['no_cek'] = $_POST['no_cek'];
+            $data['gl_date'] = $_POST['gl_date'];
+            $data['status'] = $_POST['status'];
+            $data['audit_user'] = $this->session->userdata('username');
+            $data['audit_date'] = date("Y-m-d H:i:sa");
+            $this->db->insert('ar_header', $data);
 
 //        INSERT TAG
-        $data_tag = array();
-        $tag_id = $this->input->post('tag');
-        for($i = 0; $i < count($tag_id); $i++){
-            $data_tag[$i] = array(
-                'no_voucher' =>$data['no_voucher'],
-                'tag_id'=> $tag_id[$i],
-            );
-        }
-        $this->db->insert_batch('ar_tag', $data_tag);
+            $data_tag = array();
+            $tag_id = $this->input->post('tag');
+            if(isset($tag_id) ) {
+                for ($i = 0; $i < count($tag_id); $i++) {
+                    $data_tag[$i] = array(
+                        'no_voucher' => $data['no_voucher'],
+                        'tag_id' => $tag_id[$i],
+                    );
+                }
+                $this->db->insert_batch('ar_tag', $data_tag);
+            }
 //        END OF INSERT TAG
 
-        $no_vouc = $this->input->post('no_vouc');
-        $desc = $this->input->post('desc');
-        $coa_id = $this->input->post('coa_id');
-        $debit = $this->input->post('debit');
-        $credit = $this->input->post('credit');
+            $no_vouc = $this->input->post('no_vouc');
+            $desc = $this->input->post('desc');
+            $coa_id = $this->input->post('coa_id');
+            $debit = $this->input->post('debit');
+            $credit = $this->input->post('credit');
 
-        $datax = array();
-        for ($i = 0; $i < count($coa_id); $i++) {
-            $datax[$i] = array(
-                'coa_id' => $coa_id[$i],
-                'no_voucher' => $no_vouc[$i],
-                'description' => $desc[$i],
-                'debit' => $debit[$i],
-                'credit' => $credit[$i],
+            $datax = array();
+            for ($i = 0; $i < count($coa_id); $i++) {
+                $datax[$i] = array(
+                    'coa_id' => $coa_id[$i],
+                    'no_voucher' => $no_vouc[$i],
+                    'description' => $desc[$i],
+                    'debit' => $debit[$i],
+                    'credit' => $credit[$i],
 
-            );
+                );
+            }
+            $this->db->insert_batch('ar_detail', $datax);
+
         }
-        $this->db->insert_batch('ar_detail', $datax);
-
-
         if ($this->db->trans_status() === FALSE)
         {
             $this->db->trans_rollback();
@@ -163,8 +168,8 @@ class ar extends CI_Controller
 				    <div class="">
               <table class="table table-striped table-bordered table-hover dataTable table-po-detail">';
 
-            foreach($data['header'] as $row) {
-                $output .= '
+                foreach($data['header'] as $row) {
+                    $output .= '
                     <div class="row">
                         <div class="col-md-3">
                           <label>VOUCHER NO.</label><br>
@@ -217,7 +222,7 @@ class ar extends CI_Controller
                     ';
 
 
-            };
+                };
             $output.='<table class="table">
                        <tr bgcolor="#1BBC9B">
                             <td width="100px" align="center"><b>ACCOUNT</td>
@@ -225,15 +230,15 @@ class ar extends CI_Controller
                             <td width="200px" align="right"><b>DEBIT</td>
                             <td width="200px" align="right"><b>CREDIT</td>
                        </tr>';
-            foreach($data['detail'] as $row2) {
-                $output .= '
+                        foreach($data['detail'] as $row2) {
+                        $output .= '
                             <tr>
                                 <td align="center">' . $row2->coa_id . '</td>
                                 <td>' . $row2->name_coa . '</td>
                                 <td align="right">' . number_format($row2->debit) . '</td>
                                 <td align="right">' . number_format($row2->credit) . '</td>
                             </tr>';
-            };
+                        };
             $output .= "</table></div>";
             echo $output;
 
@@ -261,8 +266,7 @@ class ar extends CI_Controller
         $gl_date = $this->input->post('gl_date');
         $audit_user = $this->session->userdata('username');
         $audit_date = date('Y-m-d H:i:s');
-        $month = substr($gl_date, 5, 2);
-        $year = substr($gl_date, 0, 4);
+
 
         $q = $this->db->query("
 			          SELECT
@@ -289,6 +293,7 @@ class ar extends CI_Controller
         }
         $posted_no = $kd2 . $kd;
 
+
         //validate transaction
         $glh = $this->M_ap->cek_header($posted_no);
         $gld = $this->M_ap->cek_detail($posted_no);
@@ -298,7 +303,7 @@ class ar extends CI_Controller
             $valid = false;
         } else {
             //to update status AR
-            $data = $this->M_ar->save_posting($noVoc, $posted_no);
+            $this->M_ar->save_posting($noVoc, $posted_no);
 
 
             $gl_no = $posted_no;
@@ -307,8 +312,8 @@ class ar extends CI_Controller
             $description = $this->input->post('description');
             $total = $this->input->post('total');
             $Fmodule = "AR";
-            $Fmonth = $month;
-            $Fyear = $year;
+            $Fmonth = date("m");
+            $Fyear = date("Y");
             $status = "posted";
             $audit_user = $audit_user;
             $audit_date = $audit_date;
@@ -325,15 +330,21 @@ class ar extends CI_Controller
                 'status' => $status,
                 'audit_user' => $audit_user,
                 'audit_date' => $audit_date,
+                'is_cashflow' => 'on'
             );
-
+            //insert to gl header
             $this->M_ar->save_glHead($data, 'gl_header');
+
+            //insert to gl_tag
+            $this->M_ar->save_gl_tag($noVoc, $gl_no);
+
+
             if ($gl_no == '' OR empty($gl_no)) {
                 $this->session->set_flashdata('error', 'Posting Failed, Try again later(2)!');
                 $valid = false;
             } else {
-                //3. move from ar detail to gl detail
-                $data = $this->M_ar->save_glDetail($noVoc, $gl_no);
+                //move from ar detail to gl detail
+                $this->M_ar->save_glDetail($noVoc, $gl_no);
                 $this->session->set_flashdata('success', 'POSTED!');
             }
         }
@@ -365,22 +376,56 @@ class ar extends CI_Controller
 
     public function save_unposting()
     {
+        $this->db->trans_begin();
+
         $id = $this->input->get('id');
-        $data = $this->M_ar->save_unposting($id);
+        $gl = $this->input->get('gl');
+        $this->M_ar->save_unposting($id);
         //to update status in gl header
-        $data = $this->M_ar->updateGLHposted($id);
-        $this->session->set_flashdata('success', 'UNPOSTED!');
+        $this->M_ar->updateGLHposted($id);
+
+        //remove from gl_tag
+        $this->M_ar->delete_gl_tag($gl);
+
+
+        if ($this->db->trans_status() === FALSE)
+        {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'Failed to unposting, try again!');
+        }
+        else
+        {
+            $this->db->trans_commit();
+            $this->session->set_flashdata('success', 'UNPOSTED!');
+        }
         redirect('ar/ar/unposting');
     }
 
     public function save_reposting()
     {
+        $this->db->trans_begin();
+
         $id = $this->input->get('id');
+        $gl = $this->input->get('pstd');
         //to update status to unpsted
-        $data = $this->M_ar->save_reposting($id);
+        $this->M_ar->save_reposting($id);
+
         //to update status in gl header
-        $data = $this->M_ar->updateGLHunposted($id);
-        $this->session->set_flashdata('success', 'POSTED and keep journal number!');
+        $this->M_ar->updateGLHunposted($id);
+
+        //insert to gl_tag
+        $this->M_ar->save_gl_tag($id, $gl);
+
+        if ($this->db->trans_status() === FALSE)
+        {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'failed, try again!');
+        }
+        else
+        {
+            $this->db->trans_commit();
+            $this->session->set_flashdata('success', 'POSTED and keep journal number!');
+        }
         redirect('ar/ar/posting');
     }
 
@@ -395,11 +440,11 @@ class ar extends CI_Controller
         $q = $this->db->query("
        			SELECT
 				  	MAX( RIGHT ( gl_no, 4 ) ) AS kt 
-				FROM
+				  FROM
 				    gl_header 
-				WHERE
+				  WHERE
 				    Fmodule = 'AR' 
-				AND MONTH ( gl_date ) = MONTH ( '" . $gl_date . "' )
+				    AND MONTH ( gl_date ) = MONTH ( '" . $gl_date . "' )
 				    AND YEAR ( gl_date ) = YEAR ( '" . $gl_date . "' );
 				");
 
@@ -424,18 +469,22 @@ class ar extends CI_Controller
             $valid = false;
         } else {
             //update table AR head
-            $data = $this->M_ar->save_upd_reposting($id, $posted_no);
+            $this->M_ar->save_upd_reposting($id, $posted_no);
 
             //update table GL head
-            $data = $this->M_ar->save_upd_reposting2($id, $posted_no);
+            $this->M_ar->save_upd_reposting2($id, $posted_no);
 
             //to update gl_no in GL detail
-            $data = $this->M_ar->updateGlNoGlDetail($posted_no, $postedNo);
+            $this->M_ar->updateGlNoGlDetail($posted_no, $postedNo);
 
             //to reupdate status in gl header
-            $data = $this->M_ar->updateGLHunposted($id);
+            $this->M_ar->updateGLHunposted($id);
             $this->session->set_flashdata('success', 'POSTED and generate new journal number!');
         }
+
+        //insert to gl_tag
+        $this->M_ar->save_gl_tag($id, $posted_no);
+
 
         // validation comit or rolback
         if ($valid) {
@@ -479,6 +528,7 @@ class ar extends CI_Controller
         $data['editArd'] = $this->M_ar->get_ard_edit($no_voucher);
         $this->load->view('template/template', $data);
     }
+
 
     public function save_edit()
     {
@@ -757,7 +807,6 @@ class ar extends CI_Controller
     {
         $no_voucher = $_POST['chkArray'];
         $gl_date = $_POST['gld'];
-
         //insert to gl_header & gl detail, update status in ar header
         $this->M_ar->mass_posting_head($no_voucher, $gl_date);
     }
